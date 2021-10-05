@@ -20,21 +20,70 @@ Do an exploratory data analysis of a matrix of expression values. The data consi
 x = readRDS("counts.RDS")
 anno = readRDS("phenodata.RDS")
 head(anno)
-
 ```
 
 ## Compute and visualize basic statistics
 
-How many replicates are there for each combination of factor levels?
+```{r}
+n=dim(x)[2]
+p=dim(x)[1]
+
+dim(anno)
+```
+
+Columns of data matrix are samples, while each row represents the expression of the gene with the same name. Number of attributes is much bigger than sample size, possibly high dimensional issues will arise (we still do not know because we have not chosen a model yet and dimensionality refers to the proportion of involved _parameters_ (and not number of _attributes_) with respect to sample size). 
+
+If we cross-tabulate both \verb|Treatment| and \verb|Technology| 
+```{r}
+xtabs(~ Treatment + Technology,anno)
+```
+
+we see that the factors are not nested (actually they are completely crossed)
+
+How many replicates are there for each combination of factor levels? The answer to this question is in the table produced above: for example, there are 20 observations that have been treated with \verb|TSA| and measured with \verb|IFC800| technology. 
+
 How many genes have an expression value above 0 in each sample?
 
+```{r}
+genes_nonzero=numeric(n)
+for (i in 1:n) {
+  genes_nonzero[i]=sum(x[,i]!=0)
+  
+}
+
+genes_nonzero
+which.min(genes_nonzero)
+  
+```
+And we see that the sample which has the less genes with non-zero expression value is \verb|i=9|, 404 genes. 
+
 ## Normalize the data
-Scale the columns so that the total sum of all columns are identical
+Scale the columns so that the total sum of all columns are identical (in order to be able to make comparisons of gene expression between samples). 
+
+```{r}
+# we normalize such that the sum of the elements of each observation is the number of gene expressions
+
+mean(x)
+xnorm=sweep(x, 2, apply(x, 2, sum)/p, "/")
+
+# and now we check
+
+apply(xnorm, 2, sum)
+
+```
+
 
 
 ## Transform the data to log-scale
 
 Use the function `log1p` to transform the data to log-scale
+
+```{r}
+?log1p()
+
+xlnorm=log1p(xnorm)
+```
+
 
 
 
@@ -45,6 +94,23 @@ Group and color by experimental factors.
 ## Most variable genes
 
 Identify the 500 most variable genes (with largest variance across samples) and continue working with those
+
+```{r}
+sort(apply(xlnorm, 1, sd), decreasing=TRUE)
+
+# let us save the indices and subset data
+
+ind=order(apply(xlnorm, 1, sd), decreasing=TRUE)[1:500]
+
+xlnorm_sel=xlnorm[ind,]
+
+dim(xlnorm_sel)
+
+
+```
+
+
+
 
 
 ## Sample correlations
@@ -70,4 +136,8 @@ knitr::include_graphics("./pca fault.png")
 * Explain why this problem happens. 
 * Try to solve the problem with your desired method and do the PCA, and plot the variance explained by your PCs. Select $k$ in order to explain $80\%$ of the variance in your data. Is the $k$ different in comparison to the previous case? 
 
+## QUESTIONS:
+
+- Why first normalization and then log?
+- Compositional data, Aitchison geometry...
 
